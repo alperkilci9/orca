@@ -12,6 +12,9 @@ import type {
   SessionOptionsSurface
 } from '../../../../../../shared/native-chat/input/native-chat-session-options'
 import { NativeChatComposerPlanChip, useNativeChatPlanMode } from './NativeChatComposerPlanChip'
+import { NativeChatSidekickControl } from '../../sidekick/NativeChatSidekickControl'
+import { runtimeTargetForOwnerEnvironment } from '@/runtime/rpc/targets/runtime-client-target'
+import { structuredAgentSessionIdOfDraftScope } from '../../drafts/native-chat-draft-scope'
 import {
   NativeChatComposerToolbar,
   type NativeChatComposerControl
@@ -63,6 +66,10 @@ export type NativeChatComposerActionsProps = {
   agent?: string
   /** A launch prompt: Attach and dictation are its only controls; launching is the panel's. */
   launchPrompt?: boolean
+  /** The composer's draft scope; a structured chat's scope carries its session id for Sidekick. */
+  draftScopeKey?: string
+  /** The paired server a structured chat runs on; Sidekick's worker-start targets it. */
+  attachmentEnvironmentId?: string
 }
 
 // Memoized: typing re-renders the composer per keystroke, and these controls rarely change with it.
@@ -94,10 +101,15 @@ export const NativeChatComposerActions = memo(function NativeChatComposerActions
   contextUsage,
   focusComposer,
   agent,
-  launchPrompt = false
+  launchPrompt = false,
+  draftScopeKey,
+  attachmentEnvironmentId
 }: NativeChatComposerActionsProps): React.JSX.Element {
   const t = useTranslate()
   useUiLanguageRevision()
+  const sidekickSessionId = draftScopeKey
+    ? structuredAgentSessionIdOfDraftScope(draftScopeKey)
+    : null
   const mode = useNativeChatPlanMode({
     surface: sessionOptionsSurface,
     snapshot: sessionOptionsSnapshot,
@@ -304,6 +316,35 @@ export const NativeChatComposerActions = memo(function NativeChatComposerActions
         />
       )
     },
+    ...(sidekickSessionId
+      ? [
+          {
+            id: 'sidekick',
+            priority: 1,
+            content: (
+              <NativeChatSidekickControl
+                sessionId={sidekickSessionId}
+                target={runtimeTargetForOwnerEnvironment(attachmentEnvironmentId ?? null)}
+                leadAgent={agent}
+                disabled={sendDisabled}
+                focusComposer={focusComposer}
+              />
+            ),
+            overflow: (close: () => void) => (
+              <NativeChatSidekickControl
+                sessionId={sidekickSessionId}
+                target={runtimeTargetForOwnerEnvironment(attachmentEnvironmentId ?? null)}
+                leadAgent={agent}
+                disabled={sendDisabled}
+                focusComposer={() => {
+                  close()
+                  focusComposer?.()
+                }}
+              />
+            )
+          }
+        ]
+      : []),
     ...(contextUsage
       ? [
           {

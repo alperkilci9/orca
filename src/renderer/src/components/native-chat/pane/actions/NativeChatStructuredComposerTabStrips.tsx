@@ -1,4 +1,6 @@
 import { NativeChatThreadGoalBanner } from '../../session/goals/NativeChatThreadGoalBanner'
+import { NativeChatSidekickStrip } from '../../sidekick/NativeChatSidekickStrip'
+import { runtimeTargetForOwnerEnvironment } from '@/runtime/rpc/targets/runtime-client-target'
 import { NativeChatStructuredWorkerLifetimeStrip } from '../../worker-lifetime/NativeChatStructuredWorkerLifetimeStrip'
 import type { NativeChatStructuredComposerTransport } from '../../composer/submit/native-chat-structured-composer-transport'
 import type { StructuredAgentSessionThreadGoal } from '../../session/goals/use-structured-agent-session-thread-goal'
@@ -19,6 +21,10 @@ export function NativeChatStructuredComposerTabStrips(props: {
   return (
     <>
       <NativeChatStructuredGoalStrip {...props} sessionId={props.transport.sessionId} />
+      <NativeChatSidekickStrip
+        sessionId={props.transport.sessionId}
+        target={runtimeTargetForOwnerEnvironment(props.transport.runtimeEnvironmentId)}
+      />
       <NativeChatStructuredWorkerLifetimeStrip
         tabId={props.tabId}
         transport={props.transport}

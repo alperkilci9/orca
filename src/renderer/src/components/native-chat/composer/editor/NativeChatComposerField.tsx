@@ -418,6 +418,8 @@ export function NativeChatComposerField({
                 focusComposer={focusComposer}
                 onExitGoalMode={goalMode?.active ? exitGoalMode : undefined}
                 launchPrompt={launch}
+                draftScopeKey={draftScopeKey}
+                attachmentEnvironmentId={attachmentEnvironmentId}
                 {...(agent ? { agent } : {})}
               />
             </div>

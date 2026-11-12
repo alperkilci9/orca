@@ -21508,6 +21508,20 @@
         "questionNotSentDetail": "Your question is still in this chat. Send /btw again to retry.",
         "questionUnconfirmed": "{{agent}} couldn't confirm the side chat got your question",
         "questionUnconfirmedDetail": "Check the side chat before asking again. Your question is still in this chat."
+      },
+      "sidekick": {
+        "button": "Sidekick",
+        "title": "Sidekick",
+        "toggle": "Enable Sidekick",
+        "agent": "Agent",
+        "pickAgent": "Pick an agent",
+        "model": "Model",
+        "defaultModel": "Agent default",
+        "effort": "Effort",
+        "defaultEffort": "Model default",
+        "running": "Running in this worktree. Turn off to release it.",
+        "strip": "Sidekick{{detail}}",
+        "turnOff": "Turn off"
       }
     },
     "tab": {
