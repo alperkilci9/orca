@@ -23,6 +23,8 @@ export async function callRuntimeRpc<TResult>(
     expectedEnvironmentRuntimeId?: string
     beforeSend?: () => void
     paramsForStatus?: (status: RuntimeStatus | null) => unknown
+    /** Local target only: a structured chat acting as the orchestration caller of this request. */
+    agentSessionId?: string
   } = {}
 ): Promise<TResult> {
   if (options.signal?.aborted) {
@@ -59,7 +61,11 @@ export async function callRuntimeRpc<TResult>(
   options.beforeSend?.()
   const response =
     target.kind === 'local'
-      ? await window.api.runtime.call({ method, params: nextParams })
+      ? await window.api.runtime.call({
+          method,
+          params: nextParams,
+          ...(options.agentSessionId ? { agentSessionId: options.agentSessionId } : {})
+        })
       : await callRuntimeEnvironmentWithRevision({
           environmentId: target.environmentId,
           method,

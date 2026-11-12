@@ -88,24 +88,65 @@ function sidekickLabel(
   return say('components.native-chat.sidekick.on', 'Sidekick · {{agent}}', { agent })
 }
 
+async function runSidekickToggle(args: {
+  enabled: boolean
+  target: RuntimeClientTarget
+  sessionId: string
+  agent: string
+  config: NativeChatSidekickConfig
+  apply: (patch: Partial<NativeChatSidekickConfig>) => void
+}): Promise<void> {
+  try {
+    if (args.enabled) {
+      const receipt = await startNativeChatSidekick({
+        target: args.target,
+        sessionId: args.sessionId,
+        agent: args.agent,
+        ...(args.config.model ? { model: args.config.model } : {}),
+        ...(args.config.effort ? { effort: args.config.effort } : {})
+      })
+      args.apply({
+        enabled: true,
+        agent: args.agent,
+        lastError: undefined,
+        ...(receipt.dispatchId ? { dispatchId: receipt.dispatchId } : {}),
+        ...(receipt.runId ? { runId: receipt.runId } : {}),
+        ...(receipt.taskId ? { taskId: receipt.taskId } : {})
+      })
+    } else {
+      const dispatchId = args.config.dispatchId
+      args.apply({ enabled: false, dispatchId: undefined, runId: undefined, taskId: undefined })
+      if (dispatchId) {
+        await stopNativeChatSidekick({ target: args.target, dispatchId }).catch(() => undefined)
+      }
+    }
+  } catch (error) {
+    args.apply({
+      enabled: false,
+      lastError: error instanceof Error ? error.message : String(error)
+    })
+  }
+}
+
 export function NativeChatSidekickControl({
   sessionId,
   target,
   leadAgent,
-  disabled,
   focusComposer
 }: {
   sessionId: string | undefined
   target: RuntimeClientTarget | null
   leadAgent: string | undefined
-  disabled?: boolean
   focusComposer?: () => void
 }): React.JSX.Element | null {
   const t = useTranslate()
   const { config, update } = useNativeChatSidekick(sessionId)
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
-  const focusReturn = useNativeChatPickerFocusReturn(focusComposer, true)
+  const { triggerRef, onInteractOutside, onCloseAutoFocus } = useNativeChatPickerFocusReturn(
+    focusComposer,
+    true
+  )
   const generation = useRef(0)
 
   const agent = config.agent ?? leadAgent
@@ -123,59 +164,35 @@ export function NativeChatSidekickControl({
     update({ ...patch, lastError: undefined })
   }
 
-  const run = async (enabled: boolean) => {
+  const run = (enabled: boolean) => {
     const myGeneration = ++generation.current
     setBusy(true)
-    try {
-      if (enabled) {
-        const receipt = await startNativeChatSidekick({
-          target,
-          sessionId,
-          agent: agent!,
-          ...(config.model ? { model: config.model } : {}),
-          ...(config.effort ? { effort: config.effort } : {})
-        })
-        if (generation.current !== myGeneration) {
-          return
-        }
-        update({
-          enabled: true,
-          agent,
-          lastError: undefined,
-          ...(receipt.dispatchId ? { dispatchId: receipt.dispatchId } : {}),
-          ...(receipt.runId ? { runId: receipt.runId } : {}),
-          ...(receipt.taskId ? { taskId: receipt.taskId } : {})
-        })
-      } else {
-        const dispatchId = config.dispatchId
-        update({ enabled: false, dispatchId: undefined, runId: undefined, taskId: undefined })
-        if (dispatchId) {
-          await stopNativeChatSidekick({ target, dispatchId }).catch(() => undefined)
+    void runSidekickToggle({
+      enabled,
+      target,
+      sessionId,
+      agent: agent!,
+      config,
+      apply: (patch) => {
+        if (generation.current === myGeneration) {
+          update(patch)
         }
       }
-    } catch (error) {
-      if (generation.current === myGeneration) {
-        update({
-          enabled: false,
-          lastError: error instanceof Error ? error.message : String(error)
-        })
-      }
-    } finally {
+    }).finally(() => {
       if (generation.current === myGeneration) {
         setBusy(false)
       }
-    }
+    })
   }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          ref={focusReturn.triggerRef}
+          ref={triggerRef}
           type="button"
           variant={config.enabled ? 'secondary' : 'ghost'}
           size="xs"
-          disabled={disabled}
           aria-expanded={open}
           aria-label={t('components.native-chat.sidekick.button', 'Sidekick')}
           className="shrink-0"
@@ -188,8 +205,8 @@ export function NativeChatSidekickControl({
         side="top"
         align="end"
         className="w-64"
-        onInteractOutside={focusReturn.onInteractOutside}
-        onCloseAutoFocus={focusReturn.onCloseAutoFocus}
+        onInteractOutside={onInteractOutside}
+        onCloseAutoFocus={onCloseAutoFocus}
       >
         <div className="flex flex-col gap-3 text-xs">
           <div className="flex items-center justify-between gap-2">

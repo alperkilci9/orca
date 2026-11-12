@@ -87,7 +87,7 @@ export function registerRuntimeHandlers(runtime: OrcaRuntimeService): void {
     'runtime:call',
     async (
       event,
-      args: { method: string; params?: unknown }
+      args: { method: string; params?: unknown; agentSessionId?: unknown }
     ): Promise<RuntimeRpcResponse<unknown>> => {
       if (event.senderFrame !== event.sender.mainFrame) {
         throw new Error('Runtime RPC call must originate from the current main frame')
@@ -99,7 +99,12 @@ export function registerRuntimeHandlers(runtime: OrcaRuntimeService): void {
           // The renderer ships with this main process, so it always speaks the current contract.
           orchestrationContractVersion: ORCHESTRATION_CONTRACT_VERSION,
           method: args.method,
-          params: args.params
+          params: args.params,
+          ...(typeof args.agentSessionId === 'string' && args.agentSessionId.length > 0
+            ? {
+                orchestrationCompatibilityEvidence: { agentSessionId: args.agentSessionId }
+              }
+            : {})
         },
         {
           clientId: 'desktop-renderer',

@@ -40,7 +40,12 @@ export type RuntimeApi = {
       graph: RuntimeRendererSyncWindowGraph
     ) => Promise<RuntimeSyncWindowGraphResult>
     getStatus: () => Promise<RuntimeStatus>
-    call: (args: { method: string; params?: unknown }) => Promise<RuntimeRpcResponse<unknown>>
+    call: (args: {
+      method: string
+      params?: unknown
+      /** Structured chat acting as an orchestration caller; stamped into the request envelope. */
+      agentSessionId?: string
+    }) => Promise<RuntimeRpcResponse<unknown>>
     subscribe: (
       args: { method: string; params?: unknown },
       callback: (response: RuntimeRpcResponse<unknown>) => void

@@ -326,7 +326,6 @@ export const NativeChatComposerActions = memo(function NativeChatComposerActions
                 sessionId={sidekickSessionId}
                 target={runtimeTargetForOwnerEnvironment(attachmentEnvironmentId ?? null)}
                 leadAgent={agent}
-                disabled={sendDisabled}
                 focusComposer={focusComposer}
               />
             ),
@@ -335,7 +334,6 @@ export const NativeChatComposerActions = memo(function NativeChatComposerActions
                 sessionId={sidekickSessionId}
                 target={runtimeTargetForOwnerEnvironment(attachmentEnvironmentId ?? null)}
                 leadAgent={agent}
-                disabled={sendDisabled}
                 focusComposer={() => {
                   close()
                   focusComposer?.()

@@ -45,15 +45,20 @@ export async function startNativeChatSidekick(args: {
   model?: string
   effort?: string
 }): Promise<NativeChatSidekickStartReceipt> {
-  return callRuntimeRpc<NativeChatSidekickStartReceipt>(args.target, 'orchestration.workerStart', {
-    from: `${ORCA_SESSION_ADDRESS_PREFIX}${args.sessionId}`,
-    worktree: 'current',
-    agent: args.agent,
-    ...(args.model ? { model: args.model } : {}),
-    ...(args.effort ? { effort: args.effort } : {}),
-    name: 'sidekick',
-    spec: nativeChatSidekickSpec()
-  })
+  return callRuntimeRpc<NativeChatSidekickStartReceipt>(
+    args.target,
+    'orchestration.workerStart',
+    {
+      from: `${ORCA_SESSION_ADDRESS_PREFIX}${args.sessionId}`,
+      worktree: 'current',
+      agent: args.agent,
+      ...(args.model ? { model: args.model } : {}),
+      ...(args.effort ? { effort: args.effort } : {}),
+      displayName: 'Sidekick',
+      spec: nativeChatSidekickSpec()
+    },
+    { agentSessionId: args.sessionId }
+  )
 }
 
 export async function stopNativeChatSidekick(args: {
