@@ -4,6 +4,23 @@ const MOUNTED_MODAL_OVERLAY_CHILD_SELECTOR =
 export const MODAL_OVERLAY_CHILD_SELECTOR = `${MOUNTED_MODAL_OVERLAY_CHILD_SELECTOR}:not([data-state='closed'])`
 const ONBOARDING_OVERLAY_CHILD_SELECTOR = ':scope > [data-onboarding-overlay]'
 
+const listeners = new Set<() => void>()
+
+export function hasBlockingBodyOverlay(): boolean {
+  return (
+    document.body.querySelector(
+      `${MODAL_OVERLAY_CHILD_SELECTOR}, ${ONBOARDING_OVERLAY_CHILD_SELECTOR}`
+    ) !== null
+  )
+}
+
+export function subscribeBodyOverlayChanges(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
 let disposeInstalledObserver: (() => void) | null = null
 
 /** Mirror body-level overlays onto body attributes for CSS. A body:has() rule with a descendant
@@ -14,6 +31,7 @@ export function installBodyOverlayAttributes(): () => void {
   }
   const body = document.body
   const observer = new MutationObserver(() => sync())
+  let blockingOverlayOpen = hasBlockingBodyOverlay()
   const sync = (): void => {
     for (const overlay of body.querySelectorAll(MOUNTED_MODAL_OVERLAY_CHILD_SELECTOR)) {
       observer.observe(overlay, { attributes: true, attributeFilter: ['data-state'] })
@@ -27,6 +45,13 @@ export function installBodyOverlayAttributes(): () => void {
       'data-onboarding-overlay-open',
       body.querySelector(ONBOARDING_OVERLAY_CHILD_SELECTOR) !== null
     )
+    const nextBlockingOverlayOpen = hasBlockingBodyOverlay()
+    if (nextBlockingOverlayOpen !== blockingOverlayOpen) {
+      blockingOverlayOpen = nextBlockingOverlayOpen
+      for (const listener of listeners) {
+        listener()
+      }
+    }
   }
   sync()
   // Overlays portal as direct body children; watching only body children and overlay state keeps

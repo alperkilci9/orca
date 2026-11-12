@@ -1,9 +1,13 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSkillFreshness } from '@/hooks/skills/freshness/useSkillFreshness'
 import { useActiveProjectSkillRuntime } from '@/hooks/skills/runtime/useActiveProjectSkillRuntime'
 import { bundledSkillTargetKey } from '@/lib/skills/runtime/bundled-skill-target'
+import {
+  hasBlockingBodyOverlay,
+  subscribeBodyOverlayChanges
+} from '@/lib/overlay-interaction/body-overlay-attributes'
 import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store/index'
 import {
@@ -22,7 +26,15 @@ type ActiveFreshnessNudge = {
   persistDismissal: boolean
 }
 
-export function SkillFreshnessNudge(): null {
+export function SkillFreshnessNudge({
+  startupPromptsFinished
+}: {
+  startupPromptsFinished: boolean
+}): null {
+  const blockingOverlayOpen = useSyncExternalStore(
+    subscribeBodyOverlayChanges,
+    hasBlockingBodyOverlay
+  )
   const target = useActiveProjectSkillRuntime().bundledSkillTarget
   const targetKey = target ? bundledSkillTargetKey(target) : null
   const state = useSkillFreshness(target)
@@ -34,6 +46,8 @@ export function SkillFreshnessNudge(): null {
   const shownFingerprints = useRef(new Set<string>())
   const persistedFingerprints = useRef(new Set<string>())
   const activeNudgeRef = useRef<ActiveFreshnessNudge | null>(null)
+  // Startup gating applies once; a later dialog leaves the toast dimmed behind its backdrop, like other toasts, rather than re-creating it.
+  const startupReleasedRef = useRef(false)
 
   useEffect(() => {
     // Programmatic retraction is not a user dismissal, so the same nudge may return this session.
@@ -42,6 +56,16 @@ export function SkillFreshnessNudge(): null {
       activeNudgeRef.current = null
       shownFingerprints.current.delete(active.fingerprint)
       toast.dismiss(active.id)
+    }
+    if (startupPromptsFinished) {
+      startupReleasedRef.current = true
+    }
+    if (!startupReleasedRef.current) {
+      const active = activeNudgeRef.current
+      if (active) {
+        retract(active)
+      }
+      return
     }
     if (!target || !targetKey) {
       const active = activeNudgeRef.current
@@ -80,6 +104,10 @@ export function SkillFreshnessNudge(): null {
     }
     if (active) {
       retract(active)
+    }
+    // Portals can mount in this commit before the observer publishes their presence.
+    if (blockingOverlayOpen || hasBlockingBodyOverlay()) {
+      return
     }
     if (shownFingerprints.current.has(fingerprint)) {
       return
@@ -159,7 +187,17 @@ export function SkillFreshnessNudge(): null {
       }
     )
     activeNudgeRef.current = nextActive
-  }, [target, targetKey, dismissed, settingsLoaded, state.error, state.plan, updateSettings])
+  }, [
+    target,
+    targetKey,
+    blockingOverlayOpen,
+    dismissed,
+    settingsLoaded,
+    startupPromptsFinished,
+    state.error,
+    state.plan,
+    updateSettings
+  ])
 
   return null
 }
